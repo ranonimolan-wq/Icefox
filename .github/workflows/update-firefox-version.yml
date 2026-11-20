@@ -80,6 +80,46 @@ jobs:
           OLD_GV="$(tr -d '[:space:]' < version.txt)"
           printf '%s\n' "$LATEST" > version.txt
 
+          # Resolve the GeckoView build on maven.mozilla.org that matches the
+          # new Firefox version exactly. GeckoView release artifacts are
+          # versioned "<major>.<minor>.<buildid>", so we pick the newest build
+          # published no later than ~1 day after this Firefox version's release
+          # date, and pin it in buildid.h (used to compute the artifact version).
+          MAJMIN="$(echo "$LATEST" | cut -d. -f1-2)"
+          ESC_MAJMIN="${MAJMIN//./\\.}"
+          GV_META="$(curl -fsSL https://maven.mozilla.org/maven2/org/mozilla/geckoview/geckoview-omni/maven-metadata.xml)"
+          GV_CANDIDATES="$(echo "$GV_META" | grep -oE "<version>${ESC_MAJMIN}\.[0-9]{14}</version>" | sed -E 's|</?version>||g' | sort)"
+          echo "GeckoView candidates for ${MAJMIN}: $GV_CANDIDATES"
+
+          RELEASE_DATE="$(curl -fsSL https://product-details.mozilla.org/1.0/firefox_history_stability_releases.json | jq -r --arg v "$LATEST" '.[$v] // empty' | tr -d '"')"
+          if [ -z "$RELEASE_DATE" ]; then
+            RELEASE_DATE="$(curl -fsSL https://product-details.mozilla.org/1.0/firefox_history_major_releases.json | jq -r --arg v "$LATEST" '.[$v] // empty' | tr -d '"')"
+          fi
+          echo "Release date of ${LATEST}: ${RELEASE_DATE:-unknown}"
+          # Compare dates as YYYYMMDD (add 1 day of tolerance)
+          if [ -n "$RELEASE_DATE" ]; then
+            CUTOFF="$(date -d "$RELEASE_DATE + 1 day" +%Y%m%d)"
+          else
+            CUTOFF="99999999"
+          fi
+
+          GV_VERSION=""
+          while IFS= read -r candidate; do
+            [ -z "$candidate" ] && continue
+            build_date="$(echo "${candidate##*.}" | cut -c1-8)"
+            if [ "$build_date" -le "$CUTOFF" ]; then
+              GV_VERSION="$candidate"
+            fi
+          done <<< "$GV_CANDIDATES"
+          if [ -z "$GV_VERSION" ]; then
+            echo "No matching GeckoView artifact found for Firefox ${LATEST}" >&2
+            exit 1
+          fi
+          BUILDID="${GV_VERSION##*.}"
+          echo "Pinning GeckoView artifact: $GV_VERSION"
+          printf '#define MOZ_BUILDID  %s\n' "$BUILDID" > buildid.h
+          echo "gv=$GV_VERSION" >> "$GITHUB_OUTPUT"
+
           # Escape dots for sed patterns
           esc() { printf '%s' "$1" | sed 's/\./\\./g'; }
 
@@ -100,6 +140,7 @@ jobs:
             echo ""
             echo "### Automated GeckoView Update"
             echo "- Bumped GeckoView / \`version.txt\` from \`${OLD_GV}\` to \`${LATEST}\` (Firefox stable track)."
+            echo "- Pinned GeckoView artifact \`${GV_VERSION}\` (via \`buildid.h\`)."
             echo "- No fork features were changed; the full Icefox feature set is preserved."
             echo "- Release: \`v${LATEST}\` with per-ABI APKs (\`arm64-v8a\`, \`armeabi-v7a\`, \`x86_64\`) and SHA-256 checksums."
             echo ""
@@ -119,7 +160,7 @@ jobs:
           LATEST="${{ steps.bump.outputs.latest }}"
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add version.txt README.md CHANGELOG.md
+          git add version.txt buildid.h README.md CHANGELOG.md
           if git diff --cached --quiet; then
             echo "Nothing to commit."
             exit 0
