@@ -43,6 +43,14 @@ jobs:
       - name: Patch android-components for standalone layout
         run: bash scripts/patch-android-components.sh android-components
 
+      - name: Apply Iceraven build-time patches
+        run: bash automation/iceraven/patch_android_components.sh
+
+      - name: Create Glean parser virtualenv
+        run: |
+          python3 -m venv venv
+          ./venv/bin/pip install --no-cache-dir "glean_parser~=20.1" > /dev/null
+
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
@@ -54,7 +62,7 @@ jobs:
           yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null 2>&1 || true
           # Best-effort pre-install; AGP downloads the exact compileSdk package
           # (e.g. platforms;android-37.2) automatically once licenses are accepted.
-          for pkg in "platforms;android-37.2" "platforms;android-37" "platforms;android-36" "build-tools;36.0.0"; do
+          for pkg in "platforms;android-37.2" "platforms;android-37" "platforms;android-36" "build-tools;36.0.0" "ndk;29.0.14206865"; do
             "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "$pkg" > /dev/null 2>&1 || echo "skipped: $pkg (AGP will fetch it if required)"
           done
 

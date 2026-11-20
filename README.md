@@ -97,7 +97,10 @@ The pinned `android-components` submodule ships build files written for the mozi
 
 ```powershell
 bash scripts/patch-android-components.sh android-components
-# Windows PowerShell: patch the same files with a text editor, or use Git Bash for the script.
+bash automation/iceraven/patch_android_components.sh
+python3 -m venv venv && ./venv/bin/pip install "glean_parser~=20.1"
+# The last patch script also downloads netwerk/dns/effective_tld_names.dat from
+# the matching mozilla-firefox release tag; it requires `wget`/`curl`.
 ```
 
 ### 4. Build Compilation
