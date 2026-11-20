@@ -320,10 +320,10 @@ androidComponents {
             // The Google Play Store does not allow multiple APKs for the same app that all have the
             // same version code. Therefore we need to have different version codes for our ARM and x86
             // builds.
-            // CI (build-release.yml) passes the release version from the git tag;
-            // local builds fall back to the default version below.
-            def versionName = gradle.hasProperty("icefox.release.version")
-                    ? gradle.getProperty("icefox.release.version")
+            // CI (build-release.yml) passes the release version from the git tag
+            // (-Picefox.release.version); local builds fall back to the default below.
+            def versionName = project.hasProperty("icefox.release.version")
+                    ? project.getProperty("icefox.release.version")
                     : "1.0.1"
             project.logger.debug("versionName override: $versionName")
 
