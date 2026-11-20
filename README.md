@@ -91,6 +91,15 @@ $env:ANDROID_HOME = "$env:LOCALAPPDATA\Android\Sdk"
 .\gradlew --version
 ```
 
+### 3.5 Standalone Layout Patch (required)
+
+The pinned `android-components` submodule ships build files written for the mozilla-central monorepo layout. Before building, apply the standalone-layout patch (idempotent, safe to re-run):
+
+```powershell
+bash scripts/patch-android-components.sh android-components
+# Windows PowerShell: patch the same files with a text editor, or use Git Bash for the script.
+```
+
 ### 4. Build Compilation
 
 ```powershell

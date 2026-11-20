@@ -40,6 +40,9 @@ jobs:
           submodules: recursive
           fetch-depth: 0
 
+      - name: Patch android-components for standalone layout
+        run: bash scripts/patch-android-components.sh android-components
+
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
