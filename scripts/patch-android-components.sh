@@ -44,4 +44,12 @@ patch_file "$AC_DIR/plugins/config/src/main/java/ConfigPlugin.kt" \
     'Paths.get(topsrcdir, "mobile/android/version.txt")' \
     'Paths.get(topsrcdir, "version.txt")'
 
+# 3. GeckoView 160 removed IPProtectionController.SERVICE_STATE_OPTED_OUT;
+#    drop the mapping branch so engine-gecko compiles against GV 160+.
+IPPROT_DELEGATE="$AC_DIR/components/browser/engine-gecko/src/main/java/mozilla/components/browser/engine/gecko/ipprotection/GeckoIPProtectionDelegate.kt"
+if [ -f "$IPPROT_DELEGATE" ] && grep -qF 'SERVICE_STATE_OPTED_OUT' "$IPPROT_DELEGATE"; then
+    sed -i '/SERVICE_STATE_OPTED_OUT/d' "$IPPROT_DELEGATE"
+    echo "patched: GeckoIPProtectionDelegate.kt (removed SERVICE_STATE_OPTED_OUT branch)"
+fi
+
 echo "patch-android-components: done"
