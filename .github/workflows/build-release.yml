@@ -46,10 +46,14 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - name: Install Android SDK components
+      - name: Prepare Android SDK
         run: |
-          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null || true
-          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-37" "build-tools;36.0.0" > /dev/null
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null 2>&1 || true
+          # Best-effort pre-install; AGP downloads the exact compileSdk package
+          # (e.g. platforms;android-37.2) automatically once licenses are accepted.
+          for pkg in "platforms;android-37.2" "platforms;android-37" "platforms;android-36" "build-tools;36.0.0"; do
+            "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "$pkg" > /dev/null 2>&1 || echo "skipped: $pkg (AGP will fetch it if required)"
+          done
 
       - name: Determine release version
         id: version
