@@ -128,3 +128,17 @@ jobs:
           git push origin HEAD:"${GITHUB_REF_NAME}"
           git tag "v${LATEST}"
           git push origin "refs/tags/v${LATEST}"
+
+      - name: Trigger release build
+        # Note: events created with GITHUB_TOKEN do not trigger other workflows
+        # (except workflow_dispatch / repository_dispatch), so we explicitly
+        # dispatch the build workflow here instead of relying on the tag push.
+        if: steps.check.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          LATEST="${{ steps.bump.outputs.latest }}"
+          gh workflow run build-release.yml \
+            --repo "$GITHUB_REPOSITORY" \
+            --ref "${GITHUB_REF_NAME}" \
+            -f tag="v${LATEST}"
