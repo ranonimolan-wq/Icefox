@@ -4,7 +4,7 @@
 
 # Icefox
 
-[![Platform](https://img.shields.io/badge/Platform-Android-lightgrey.svg?style=flat-square)](https://developer.android.com) [![Latest Release](https://img.shields.io/badge/Release-v1.0.1-blue.svg?style=flat-square)](https://github.com/mina-android/Icefox/releases) [![License](https://img.shields.io/badge/License-MPL--2.0-black.svg?style=flat-square)](https://www.mozilla.org/en-US/MPL/2.0/) [![Fork of](https://img.shields.io/badge/Fork%20of-Iceraven%20Browser-lightgrey.svg?style=flat-square)](https://github.com/fork-maintainers/iceraven-browser)
+[![Platform](https://img.shields.io/badge/Platform-Android-lightgrey.svg?style=flat-square)](https://developer.android.com) [![Latest Release](https://img.shields.io/badge/Release-v160.0.1-blue.svg?style=flat-square)](https://github.com/mina-android/Icefox/releases) [![License](https://img.shields.io/badge/License-MPL--2.0-black.svg?style=flat-square)](https://www.mozilla.org/en-US/MPL/2.0/) [![Fork of](https://img.shields.io/badge/Fork%20of-Iceraven%20Browser-lightgrey.svg?style=flat-square)](https://github.com/fork-maintainers/iceraven-browser)
 
 <p align="center">
   Icefox is an offline-first Android web browser forked from Iceraven Browser (Mozilla Fenix and GeckoView). All account systems, cloud synchronization, internal password and autofill storage, bookmarks, generative AI controls, and auxiliary cloud services are permanently excised.
@@ -33,25 +33,25 @@
 
 - **Data Ownership and Privacy**: All browsing state remains localized to the Android application sandbox (`/data/data/com.ma.icefox/`). On cold startup, `AccountAndLoginPurge.purgeLegacyData(...)` deletes any lingering SQLite databases (`logins.db`, `autofill.db`, `remote_tabs.db`, `pocket.db`, `bookmarks.db`), token files, and obsolete SharedPreferences.
 - **Offline Reliability**: The browser operates without requiring any Mozilla account or cloud endpoint, using local GeckoView profile storage and Mozilla's unidirectional Redux state store (`mozilla.components.lib.state.Store`) for tab and session state.
-- **Engine and UI Stack**: Built on Mozilla GeckoView (`158.0.2`, anchored in `version.txt`) with Jetpack Compose Material 3, AndroidX Fragments, and Navigation components, including AMOLED dark theme support and Material You monochrome launcher icons.
+- **Engine and UI Stack**: Built on Mozilla GeckoView (`160.0.1`, anchored in `version.txt`) with Jetpack Compose Material 3, AndroidX Fragments, and Navigation components, including AMOLED dark theme support and Material You monochrome launcher icons.
 
 ---
 
 ## Screenshots
 
-Screenshots are not yet included in this repository. UI previews for the homepage, tabs tray, add-ons manager, and settings screens will be added once captured from the `v1.0.1` release build.
+Screenshots are not yet included in this repository. UI previews for the homepage, tabs tray, add-ons manager, and settings screens will be added once captured from the `v160.0.1` release build.
 
 ---
 
 ## Downloads
 
-Pre-built standalone APKs for **v1.0.1** are published under [GitHub Releases](https://github.com/mina-android/Icefox/releases).
+Pre-built standalone APKs for **v160.0.1** are published under [GitHub Releases](https://github.com/mina-android/Icefox/releases).
 
 | Platform | Architecture | Package Type | Download Link | Checksum (SHA-256) |
 | :--- | :--- | :--- | :--- | :--- |
-| **Android** | arm64-v8a | Package `.apk` | [Download (v1.0.1)](https://github.com/mina-android/Icefox/releases/download/v1.0.1/Icefox-v1.0.1-arm64-v8a.apk) | Verify on Releases page |
-| **Android** | armeabi-v7a | Package `.apk` | [Download (v1.0.1)](https://github.com/mina-android/Icefox/releases/download/v1.0.1/Icefox-v1.0.1-armeabi-v7a.apk) | Verify on Releases page |
-| **Android** | x86_64 | Package `.apk` | [Download (v1.0.1)](https://github.com/mina-android/Icefox/releases/download/v1.0.1/Icefox-v1.0.1-x86_64.apk) | Verify on Releases page |
+| **Android** | arm64-v8a | Package `.apk` | [Download (v160.0.1)](https://github.com/mina-android/Icefox/releases/download/v160.0.1/Icefox-v160.0.1-arm64-v8a.apk) | Verify on Releases page |
+| **Android** | armeabi-v7a | Package `.apk` | [Download (v160.0.1)](https://github.com/mina-android/Icefox/releases/download/v160.0.1/Icefox-v160.0.1-armeabi-v7a.apk) | Verify on Releases page |
+| **Android** | x86_64 | Package `.apk` | [Download (v160.0.1)](https://github.com/mina-android/Icefox/releases/download/v160.0.1/Icefox-v160.0.1-x86_64.apk) | Verify on Releases page |
 
 ---
 
@@ -78,12 +78,12 @@ git clone --recursive https://github.com/mina-android/Icefox.git
 cd Icefox
 
 # Optionally check out a release tag
-git checkout tags/v1.0.1 -b release-build
+git checkout tags/v160.0.1 -b release-build
 ```
 
 ### 3. Dependency Installation
 
-Configure `ANDROID_HOME` and verify Gradle wrapper resolution (Gradle downloads Maven and GeckoView `158.0.2` dependencies automatically on first run):
+Configure `ANDROID_HOME` and verify Gradle wrapper resolution (Gradle downloads Maven and GeckoView `160.0.1` dependencies automatically on first run):
 
 ```powershell
 # PowerShell example on Windows
