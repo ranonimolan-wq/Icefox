@@ -88,9 +88,9 @@ android {
             buildConfigField("String", "VCS_HASH", "\"" + gradle.mozconfig.source_repo.MOZ_SOURCE_STAMP + "\"")
         }
 
-	    // If building locally, just use debug signing. In official automation builds, the
-	    // files are signed using a separate service and not within gradle.
-	    // Also skip during buildconfig linting, and skip if the `disableDebugSigning` Gradle property is set.
+            // If building locally, just use debug signing. In official automation builds, the
+            // files are signed using a separate service and not within gradle.
+            // Also skip during buildconfig linting, and skip if the `disableDebugSigning` Gradle property is set.
         // use iceraven CI signing instead
         // if (!project.hasProperty("disableDebugSigning") && !gradle.hasProperty("localProperties.disableDebugSigning") && !gradle.mozconfig.substs.MOZ_AUTOMATION && System.getenv("MOZ_BUILD_CONFIG_LINT") != "1") {
         //     signingConfig = signingConfigs.debug
@@ -320,7 +320,11 @@ androidComponents {
             // The Google Play Store does not allow multiple APKs for the same app that all have the
             // same version code. Therefore we need to have different version codes for our ARM and x86
             // builds.
-            def versionName = "1.0.1"
+            // CI (build-release.yml) passes the release version from the git tag;
+            // local builds fall back to the default version below.
+            def versionName = gradle.hasProperty("icefox.release.version")
+                    ? gradle.getProperty("icefox.release.version")
+                    : "1.0.1"
             project.logger.debug("versionName override: $versionName")
 
             variant.outputs.each { output ->

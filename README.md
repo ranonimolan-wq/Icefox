@@ -127,7 +127,7 @@ In Android System Settings, open **Apps > Icefox > Storage & cache** and select 
 
 ## Contribution
 
-Contributions that maintain Icefox's zero-account, zero-sync, zero-bookmarks, zero-password-storage, and zero-AI invariants are welcome. Do not modify `version.txt` away from `158.0.2`, as it pins the GeckoView binary dependency.
+Contributions that maintain Icefox's zero-account, zero-sync, zero-bookmarks, zero-password-storage, and zero-AI invariants are welcome. Note that `version.txt` (the GeckoView pin) is updated automatically by CI: a daily scheduled workflow tracks Mozilla's Firefox **stable** channel, bumps `version.txt`, tags `v<firefox-version>` and publishes a release with per-ABI APKs. Do not manually edit `version.txt` unless fixing a failed automated bump.
 
 ### Contribution Process
 

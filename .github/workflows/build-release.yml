@@ -1,0 +1,131 @@
+# Builds the Icefox forkRelease APKs and publishes them as a GitHub Release.
+#
+# Triggers:
+#   * push of a tag matching v*  (e.g. v158.0.2)  -> builds and releases that tag
+#   * manual workflow_dispatch   -> optionally build an existing tag
+#
+# The release asset naming is: Icefox-v<version>-<abi>.apk plus a SHA256SUMS.txt
+# The APK versionName is derived from the tag via -Picefox.release.version
+
+name: Build and Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Existing tag to build and release (e.g. v158.0.2). Leave empty to build the current branch state.'
+        required: false
+        default: ''
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Build forkRelease APKs
+    runs-on: ubuntu-latest
+    timeout-minutes: 100
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ (github.event_name == 'workflow_dispatch' && inputs.tag != '' && inputs.tag) || github.ref }}
+          submodules: recursive
+          fetch-depth: 0
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Install Android SDK components
+        run: |
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null || true
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-37" "build-tools;36.0.0" > /dev/null
+
+      - name: Determine release version
+        id: version
+        run: |
+          if [ -n "${{ inputs.tag }}" ]; then
+            VERSION="${{ inputs.tag }}"
+          else
+            VERSION="${GITHUB_REF_NAME}"
+          fi
+          VERSION="${VERSION#v}"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "tag=v$VERSION"
+          echo "tag=v$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Build APKs
+        run: ./gradlew app:assembleForkRelease --no-daemon -Picefox.release.version="${{ steps.version.outputs.version }}"
+
+      - name: Collect APKs and compute checksums
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          mkdir -p dist
+          found=0
+          while IFS= read -r apk; do
+            found=1
+            abi_dir="$(basename "$(dirname "$apk")")"
+            case "$abi_dir" in
+              arm64-v8a|armeabi-v7a|x86|x86_64) abi="$abi_dir" ;;
+              *) abi="universal" ;;
+            esac
+            cp "$apk" "dist/Icefox-v${VERSION}-${abi}.apk"
+          done < <(find . -path '*outputs/apk/forkRelease*' -name '*.apk' -type f)
+          if [ "$found" -eq 0 ]; then
+            echo "No forkRelease APKs found!" >&2
+            exit 1
+          fi
+          cd dist
+          sha256sum Icefox-v*.apk > SHA256SUMS.txt
+          ls -la
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="${{ steps.version.outputs.tag }}"
+          VERSION="${{ steps.version.outputs.version }}"
+          NOTES=$(cat <<'EOF'
+          Automated release tracking Firefox stable.
+
+          - Engine: GeckoView (Firefox stable track)
+          - Assets: per-ABI APKs (`arm64-v8a`, `armeabi-v7a`, `x86_64`) and `SHA256SUMS.txt`
+          - Verify integrity: `sha256sum -c SHA256SUMS.txt`
+          - Release build type: `forkRelease` (same feature set as previous releases)
+          EOF
+          )
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" > /dev/null 2>&1; then
+            gh release upload "$TAG" dist/* --repo "$GITHUB_REPOSITORY" --clobber
+          else
+            gh release create "$TAG" dist/* \
+              --repo "$GITHUB_REPOSITORY" \
+              --title "Icefox $TAG (GeckoView $VERSION)" \
+              --notes "$NOTES"
+          fi
+
+      - name: Open issue on build failure
+        if: failure() && startsWith(github.ref, 'refs/tags/')
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh issue create \
+            --repo "$GITHUB_REPOSITORY" \
+            --title "Release build failed for ${GITHUB_REF_NAME}" \
+            --body "The automated build for \`${GITHUB_REF_NAME}\` failed. Run: [${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}](${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID})
+
+          Most likely cause: the pinned \`android-components\` submodule is not yet compatible with the new GeckoView version, or the new GeckoView artifact is not yet on \`maven.mozilla.org\`.
+          Next steps:
+          1. Read the failing job log.
+          2. If it is a GeckoView/a-c API incompatibility, update the \`android-components\` submodule to a matching upstream revision and keep all Icefox fork features intact.
+          3. Delete the broken tag (\`git push origin :refs/tags/${GITHUB_REF_NAME}\`) and re-tag after fixing." || \
+          echo "Issue creation failed (issues may be disabled)."

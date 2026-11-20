@@ -1,0 +1,130 @@
+# Tracks Mozilla's Firefox **stable** release channel and keeps Icefox in sync.
+#
+# Once per day it compares the latest stable Firefox version (Mozilla
+# product-details API) with the GeckoView pin in `version.txt`. When a newer
+# stable Firefox exists:
+#   1. `version.txt` is bumped to the new GeckoView version
+#   2. README.md version links and the CHANGELOG.md are updated
+#   3. The change is committed to main and tagged `v<firefox-version>`
+#   4. The tag push triggers build-release.yml which builds and publishes APKs
+#
+# If the resulting build fails, build-release.yml automatically opens an issue.
+
+name: Track Firefox Stable
+
+on:
+  schedule:
+    - cron: '30 5 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: firefox-version-update
+  cancel-in-progress: false
+
+jobs:
+  update:
+    name: Bump GeckoView to latest Firefox stable
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check for a new Firefox stable version
+        id: check
+        run: |
+          LATEST="$(curl -fsSL https://product-details.mozilla.org/1.0/firefox_versions.json | jq -r '.LATEST_FIREFOX_VERSION')"
+          CURRENT="$(tr -d '[:space:]' < version.txt)"
+          echo "Latest Firefox stable : $LATEST"
+          echo "Current GeckoView pin : $CURRENT"
+
+          if [ -z "$LATEST" ] || [ "$LATEST" = "null" ]; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "Could not determine latest Firefox version." >&2
+            exit 0
+          fi
+
+          if [ "$LATEST" = "$CURRENT" ]; then
+            echo "Already tracking the latest Firefox stable. Nothing to do."
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          if git ls-remote --tags origin "refs/tags/v${LATEST}" | grep -q "refs/tags/v${LATEST}$"; then
+            echo "Tag v${LATEST} already exists. Nothing to do."
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          # Only process a bare stable version like "159.0" or "159.0.2";
+          # ignore anything with a suffix (e.g. "159.0b9", "158.0esr").
+          if ! echo "$LATEST" | grep -Eq '^[0-9]+(\.[0-9]+)+$'; then
+            echo "Skipping non-stable version string: $LATEST"
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "latest=$LATEST" >> "$GITHUB_OUTPUT"
+          echo "changed=true" >> "$GITHUB_OUTPUT"
+
+      - name: Bump version files
+        if: steps.check.outputs.changed == 'true'
+        id: bump
+        run: |
+          LATEST="${{ steps.check.outputs.latest }}"
+          OLD_GV="$(tr -d '[:space:]' < version.txt)"
+          printf '%s\n' "$LATEST" > version.txt
+
+          # Escape dots for sed patterns
+          esc() { printf '%s' "$1" | sed 's/\./\\./g'; }
+
+          # README: old GeckoView mentions and old release links/badge
+          OLD_APP="$(grep -oE 'v[0-9]+(\.[0-9]+)+' README.md | head -n 1 || true)"
+          if [ -n "$OLD_APP" ]; then
+            sed -i "s/$(esc "$OLD_APP")/v${LATEST}/g" README.md
+          fi
+          if grep -q "$OLD_GV" README.md; then
+            sed -i "s/$(esc "$OLD_GV")/${LATEST}/g" README.md
+          fi
+
+          # CHANGELOG: prepend an automated entry after the header block
+          DATE="$(date -u +%F)"
+          ENTRY="$(mktemp)"
+          {
+            echo "## [${LATEST}] - ${DATE}"
+            echo ""
+            echo "### Automated GeckoView Update"
+            echo "- Bumped GeckoView / \`version.txt\` from \`${OLD_GV}\` to \`${LATEST}\` (Firefox stable track)."
+            echo "- No fork features were changed; the full Icefox feature set is preserved."
+            echo "- Release: \`v${LATEST}\` with per-ABI APKs (\`arm64-v8a\`, \`armeabi-v7a\`, \`x86_64\`) and SHA-256 checksums."
+            echo ""
+          } > "$ENTRY"
+          FIRST_HEADING_LINE="$(grep -n '^## \[' CHANGELOG.md | head -n 1 | cut -d: -f1)"
+          head -n $((FIRST_HEADING_LINE - 1)) CHANGELOG.md > CHANGELOG.md.tmp
+          cat "$ENTRY" >> CHANGELOG.md.tmp
+          tail -n +$FIRST_HEADING_LINE CHANGELOG.md >> CHANGELOG.md.tmp
+          mv CHANGELOG.md.tmp CHANGELOG.md
+          rm -f "$ENTRY"
+
+          echo "latest=$LATEST" >> "$GITHUB_OUTPUT"
+
+      - name: Commit, push and tag
+        if: steps.check.outputs.changed == 'true'
+        run: |
+          LATEST="${{ steps.bump.outputs.latest }}"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add version.txt README.md CHANGELOG.md
+          if git diff --cached --quiet; then
+            echo "Nothing to commit."
+            exit 0
+          fi
+          git commit -m "chore: track Firefox stable ${LATEST} (GeckoView ${LATEST})"
+          git push origin HEAD:"${GITHUB_REF_NAME}"
+          git tag "v${LATEST}"
+          git push origin "refs/tags/v${LATEST}"
