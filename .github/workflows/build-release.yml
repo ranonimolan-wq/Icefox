@@ -69,7 +69,7 @@ jobs:
           echo "tag=v$VERSION" >> "$GITHUB_OUTPUT"
 
       - name: Build APKs
-        run: ./gradlew app:assembleForkRelease --no-daemon -Picefox.release.version="${{ steps.version.outputs.version }}"
+        run: ./gradlew app:assembleForkRelease --no-daemon --stacktrace -Picefox.release.version="${{ steps.version.outputs.version }}"
 
       - name: Collect APKs and compute checksums
         run: |
