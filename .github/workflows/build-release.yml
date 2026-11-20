@@ -89,11 +89,14 @@ jobs:
           found=0
           while IFS= read -r apk; do
             found=1
-            abi_dir="$(basename "$(dirname "$apk")")"
-            case "$abi_dir" in
-              arm64-v8a|armeabi-v7a|x86|x86_64) abi="$abi_dir" ;;
-              *) abi="universal" ;;
-            esac
+            base="$(basename "$apk")"
+            abi="universal"
+            for a in arm64-v8a armeabi-v7a x86 x86_64; do
+              if echo "$base" | grep -q -- "-${a}-"; then
+                abi="$a"
+                break
+              fi
+            done
             cp "$apk" "dist/Icefox-v${VERSION}-${abi}.apk"
           done < <(find . -path '*outputs/apk/forkRelease*' -name '*.apk' -type f)
           if [ "$found" -eq 0 ]; then
@@ -120,13 +123,13 @@ jobs:
           EOF
           )
           if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" > /dev/null 2>&1; then
-            gh release upload "$TAG" dist/* --repo "$GITHUB_REPOSITORY" --clobber
-          else
-            gh release create "$TAG" dist/* \
-              --repo "$GITHUB_REPOSITORY" \
-              --title "Icefox $TAG (GeckoView $VERSION)" \
-              --notes "$NOTES"
+            # Re-run for the same tag: replace the previous release assets entirely
+            gh release delete "$TAG" --repo "$GITHUB_REPOSITORY" --cleanup-tag false --yes || true
           fi
+          gh release create "$TAG" dist/* \
+            --repo "$GITHUB_REPOSITORY" \
+            --title "Icefox $TAG (GeckoView $VERSION)" \
+            --notes "$NOTES"
 
       - name: Open issue on build failure
         if: failure() && startsWith(github.ref, 'refs/tags/')
