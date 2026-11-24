@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [161.0] - 2026-11-24
+
+### Automated GeckoView Update
+- Bumped GeckoView / `version.txt` from `160.0.1` to `161.0` (Firefox stable track).
+- Pinned GeckoView artifact `161.0.20261118180411` (via `buildid.h`).
+- No fork features were changed; the full Icefox feature set is preserved.
+- Release: `v161.0` with per-ABI APKs (`arm64-v8a`, `armeabi-v7a`, `x86_64`) and SHA-256 checksums.
+
 ## [160.0.1] - 2026-11-20
 
 ### Automated GeckoView Update
